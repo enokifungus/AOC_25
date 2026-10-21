@@ -2,6 +2,19 @@ use std::error::Error;
 use regex;
 use itertools::Itertools;
 
+fn parse_source(sc: &str) -> Result<Vec<(i32,i32)>,Box<dyn Error>> {
+    let mut z = Vec::new();
+    for i in sc.split(',') {
+        let a:Vec<_> = i.split('-').map(|j| j.parse::<i32>()).collect::<Result<_,_>>()?;
+        let [mut x,y] = a[..].try_into()?;
+        for e in x.ilog10()..y.ilog10() {
+            let a = 
+        }
+        z.push((x,y));
+    }
+    Ok(z)
+}
+
 fn main() {
     println!("Hello, world!");
 }
@@ -15,13 +28,8 @@ mod tests {
 
     #[test]
     fn _1() -> Result<(),Box<dyn Error>> {
-        let re = regex::Regex::new(r"[-,]")?;
-        let a:Vec<_> = re.split(DATA1).map(|i| i.parse::<i32>()).collect::<Result<_,_>>()?;
-        let a:Vec<(_,_)> = a.into_iter().tuples().collect();
+        let a = parse_source(DATA1);
         println!("{:?}",&a);
-        for (i,j) in a {
-            if i.ilog10() != j.ilog10() { println!("{i} {j}"); }
-        }
         Ok(())
     }
 }
