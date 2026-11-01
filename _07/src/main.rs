@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs::read;
 
 fn parse_source(sc: &[u8]) -> (Vec<&[u8]>,usize) {
@@ -9,28 +8,30 @@ fn parse_source(sc: &[u8]) -> (Vec<&[u8]>,usize) {
     (ar,st)
 }
 
-fn part1(sc: &[&[u8]],st: usize) -> usize {
-    let mut ty = HashSet::new();
-    ty.insert(st);
+fn part12(sc: &[&[u8]],st: usize) -> (usize,i64) {
+    let mut ty = vec![0i64;sc[0].len()];
+    ty[st] = 1;
     let mut n1 = 0;
     for l in sc.iter() {
         for i in (0..l.len()).filter(|&i| l[i] != b'.') {
-            if ty.contains(&i) {
+            if ty[i] != 0 {
                 n1 += 1;
-                ty.remove(&i);
-                ty.insert(i - 1);
-                ty.insert(i + 1);
+                ty[i - 1] += ty[i];
+                ty[i + 1] += ty[i];
+                ty[i] = 0;
             }
         }
     }
-    n1
+    let n2 = ty.into_iter().sum::<i64>();
+    (n1,n2)
 }
 
 fn main() {
     let sc = read("data").expect("file 'data'");
     let (ar,st) = parse_source(&sc);
-    let n1 = part1(&ar,st);
+    let (n1,n2) = part12(&ar,st);
     println!("PART1: {n1}");
+    println!("PART2: {n2}");
 }
 
 #[cfg(test)]
@@ -58,7 +59,8 @@ mod tests {
     fn _1() {
         let sc = DATA;
         let (sc,st) = parse_source(sc);
-        let n1 = part1(&sc,st);
+        let (n1,n2) = part12(&sc,st);
         assert_eq!(n1,21);
+        assert_eq!(n2,40);
     }
 }
