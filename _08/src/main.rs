@@ -1,87 +1,116 @@
 use std::fs::read_to_string;
 use std::collections::HashSet;
 use std::collections::BinaryHeap;
-use std::cmp::Reverse;
-use float_ord::FloatOrd;
+use std::cmp::Ordering;
 
-fn distance(a:[f32;3], b:[f32;3]) -> f32 {
+fn distance(a:&[f32;3], b:&[f32;3]) -> f32 {
     (a[0] - b[0]).abs().hypot((a[1] - b[1]).abs()).hypot((a[2] - b[2]).abs())
 }
 
-fn parse_source(sc: &str) -> Vec<[f32;3]> {
-    sc.lines().map(|i| i.split(',')
-        .map(|j| j.parse().unwrap())
-        .collect::<Vec<_>>()
-        .try_into().unwrap()).collect()
+struct Pair {
+    di: f32,
+    pr: f32,
+    i: usize,
+    j: usize,
 }
 
-fn part2(ar: &[[f32;3]]) -> f32 {
-    let mut di:Vec<_> = (1..ar.len()).flat_map(|i| (0..i).map(move |j| (i,j)))
-        .map(|(i,j)| (distance(ar[i],ar[j]),i,j)).collect();
-    di.sort_unstable_by(|&i,&j| i.0.total_cmp(&j.0));
-    let mut gp:Vec<HashSet<usize>> = Vec::new();
-    for &(_,i,j) in di.iter() {
-        let u:Vec<_> = (0..gp.len()).filter(|&x| gp[x].contains(&i) || gp[x].contains(&j)).collect();
-        if let [v,w] = u[..] {
-            let (s,t) = gp.split_at_mut(w);
-            s[v].extend(t[0].drain());
-            gp.remove(w);
-        } else if let [v] = u[..] {
-            gp[v].insert(i);
-            gp[v].insert(j);
-        } else {
-            let mut s = HashSet::new();
-            s.insert(i);
-            s.insert(j);
-            gp.push(s);
-        }
-        if gp.len() == 1 && gp[0].len() == ar.len() {
-            return ar[i][0]*ar[j][0];
-        }
+impl Pair {
+    fn new(i:usize, j:usize, ar:&[[f32;3]]) -> Self {
+        Pair { di:distance(&ar[i],&ar[j]), pr:ar[i][0]*ar[j][0], i, j }
     }
-    panic!("can't connect all");
 }
 
-fn part1(ar: &[[f32;3]], m: usize) -> usize {
-    let mut di:Vec<_> = (1..ar.len()).flat_map(|i| (0..i).map(move |j| (i,j)))
-        .map(|(i,j)| (distance(ar[i],ar[j]),i,j)).collect();
-    di.sort_unstable_by(|&i,&j| i.0.total_cmp(&j.0));
-    let mut gp:Vec<HashSet<usize>> = Vec::new();
-    for &(_,i,j) in di.iter().take(m) {
-        let u:Vec<_> = (0..gp.len()).filter(|&x| gp[x].contains(&i) || gp[x].contains(&j)).collect();
-        if let [v,w] = u[..] {
-            let (s,t) = gp.split_at_mut(w);
-            s[v].extend(t[0].drain());
-            gp.remove(w);
-        } else if let [v] = u[..] {
-            gp[v].insert(i);
-            gp[v].insert(j);
+impl PartialEq for Pair {
+    fn eq(&self, other:&Self) -> bool {
+        self.di == other.di
+    }
+}
+
+impl Eq for Pair {}
+
+impl PartialOrd for Pair {
+    fn partial_cmp(&self, other:&Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Pair {
+    fn cmp(&self, other:&Self) -> Ordering {
+        other.di.total_cmp(&self.di)
+    }
+}
+
+struct Playground {
+    nb: usize,
+    hp: BinaryHeap<Pair>,
+    gp: Vec<HashSet<usize>>,
+}
+
+impl Playground {
+    fn new(sc: &str) -> Self {
+        let sc:Vec<[f32;3]> = sc.lines().map(|s| s.split(',').map(|j| j.parse().expect("can't parse number"))
+            .collect::<Vec<_>>().try_into().expect("expected 3 values per line")).collect();
+        let nb = sc.len();
+        let hp:BinaryHeap<_> = (1..sc.len()).flat_map(|i| (0..i).map(move |j| (i,j)))
+            .map(|(i,j)| Pair::new(i,j,&sc)).collect();
+        let gp = Vec::new();
+        Playground { nb,hp,gp }
+    }
+
+    fn connect(&mut self) -> Option<f32> {
+        if let Some(Pair{ i,j,pr,.. }) = self.hp.pop() {
+            let u:Vec<_> = (0..self.gp.len()).filter(|&k| self.gp[k].contains(&i) || self.gp[k].contains(&j)).collect();
+            match u[..] {
+                [a,b] => {
+                    let (x,y) = self.gp.split_at_mut(b);
+                    x[a].extend(y[0].drain());
+                    self.gp.remove(b);
+                }
+                [a] => {
+                    self.gp[a].insert(i);
+                    self.gp[a].insert(j);
+                }
+                _ => {
+                    let mut x = HashSet::new();
+                    x.insert(i);
+                    x.insert(j);
+                    self.gp.push(x);
+                }
+            }
+            Some(pr)
         } else {
-            let mut s = HashSet::new();
-            s.insert(i);
-            s.insert(j);
-            gp.push(s);
+            None
         }
     }
-    let mut sz:Vec<_> = gp.iter().map(|s| s.len()).collect();
-    sz.sort();
-    sz[(sz.len() - 3)..].iter().product::<usize>()
+
+    fn part12(&mut self, p1:usize) -> (usize,f32) {
+        for _ in 0..p1 {
+            let _ = self.connect().expect("not enough boxes");
+        }
+        let mut a:Vec<_> = self.gp.iter().map(|s| s.len()).collect();
+        a.sort();
+        let n1 = a[(a.len() - 3)..].into_iter().product::<usize>();
+        let n2 = loop {
+            let pr = self.connect().expect("not connected?");
+            if self.gp.len() == 1 && self.gp[0].len() == self.nb { break pr; }
+        };
+        (n1,n2)
+    }
 }
 
 fn main() {
     let sc = read_to_string("data").expect("file 'data'");
-    let ar = parse_source(&sc);
-    let n1 = part1(&ar,1000);
+    let mut pg = Playground::new(&sc);
+    let (n1,n2) = pg.part12(1000);
     println!("PART1: {n1}");
-    let n2 = part2(&ar);
     println!("PART2: {n2}");
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
-    const DATA:&str = "162,817,812
+   const DATA:&str = "162,817,812
 57,618,57
 906,360,560
 592,479,940
@@ -104,26 +133,10 @@ mod test {
 
     #[test]
     fn _1() {
-        let ar = parse_source(DATA);
-        let n1 = part1(&ar,10);
-        let n2 = part2(&ar);
+        let sc = DATA;
+        let mut pg = Playground::new(sc);
+        let (n1,n2) = pg.part12(10);
         assert_eq!(n1,40);
         assert_eq!(n2,25272.0);
-    }
-
-    #[derive(PartialEq,Eq,PartialOrd,Ord,Debug)]
-    struct Foo {
-        a: FloatOrd<f32>,
-        b: i32,
-    }
-
-    #[test]
-    fn _2() {
-        let a = b"bravo";
-        let mut b:BinaryHeap<_> = a.iter().map(|x| Foo{a:FloatOrd((x - b'a') as f32),b:99}).collect();
-        println!("{b:?}");
-        while let Some(x) = b.pop() {
-            println!("{x:?}");
-        }
     }
 }
