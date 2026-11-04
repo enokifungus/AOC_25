@@ -2,10 +2,10 @@ use std::error::Error;
 use std::fs::read_to_string;
 use std::collections::HashSet;
 
-fn part12(a: &Vec<(i64,i64)>) -> (i64,i64) {
+fn part12(a: Vec<(i64,i64)>) -> (i64,i64) {
     let mut b = HashSet::new();
     let mut c = HashSet::new();
-    for &(p,q) in a {
+    for (p,q) in a {
         let n = p.ilog10()+1;
         let r = |x| {
             let d = (10i64.pow(n) - 1)/(10i64.pow(x) - 1);
@@ -44,7 +44,7 @@ fn main() -> Result<(),Box<dyn Error>> {
     let sc = read_to_string("data")?;
     let sc = sc.trim();
     let a = parse_source(&sc)?;
-    let (n1,n2) = part12(&a);
+    let (n1,n2) = part12(a);
     println!("PART1: {n1}");
     println!("PART2: {n2}");
     Ok(())

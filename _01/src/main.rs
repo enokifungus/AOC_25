@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::num::ParseIntError;
 use std::fs::read_to_string;
 
 fn part12(sc: &Vec<i32>) -> (i32,i32) {
@@ -20,10 +19,10 @@ fn part12(sc: &Vec<i32>) -> (i32,i32) {
     (n1,n2)
 }
 
-fn parse_source(sc: &str) -> Result<Vec<i32>,ParseIntError> {
+fn parse_source(sc: &str) -> Result<Vec<i32>,Box<dyn Error>> {
     sc.lines()
         .map(|i| i.split_at(1))
-        .map(|(d,i)| i.parse::<i32>().map(|x| x * (if d=="L" {-1} else {1})))
+        .map(|(d,i)| i.parse::<i32>().map(|x| x * (if d=="L" {-1} else {1})).map_err(Into::into))
         .collect()
 }
 
